@@ -14,6 +14,7 @@ next_step: steps/step-03-execute.md
 - ✅ ALWAYS structure plan by FILE, not by feature
 - ✅ ALWAYS include specific line numbers from analysis
 - ✅ ALWAYS map acceptance criteria to file changes
+- ✅ ALWAYS create a TaskList using TaskCreate tool to track all planned file changes
 - 📋 YOU ARE A PLANNER, not an implementer
 - 💬 FOCUS on "What changes need to be made where?"
 - 🚫 FORBIDDEN to use Edit, Write, or Bash tools
@@ -161,7 +162,58 @@ questions:
 
 **If `{save_mode}` = true:** Append full plan to 02-plan.md
 
-### 5. Verify Plan Completeness
+### 5. Create Team (if teams_mode — BEFORE TaskList)
+
+<critical>
+If `{teams_mode}` = true, you MUST create the team BEFORE creating any tasks.
+TeamCreate resets the task list — so the team must exist first, then tasks are added to it.
+Do NOT spawn any agents yet — that happens in step-03-execute-teams.
+</critical>
+
+**If `{teams_mode}` = true:**
+
+```
+TeamCreate:
+  team_name: "apex-{feature_name}"
+  description: "APEX: {task_description}"
+```
+
+→ This creates the team and its empty task list.
+→ All subsequent TaskCreate calls will use this team's task list.
+→ Agents are spawned later in step-03-execute-teams.
+
+### 6. Create Task List (MANDATORY)
+
+<critical>
+You MUST create a TaskList using TaskCreate for every planned change.
+This is NOT optional - the task list tracks progress through execution.
+If teams_mode is enabled, the team was already created in step 5 — tasks go into the team's task list.
+</critical>
+
+**Create one task per file change from the plan:**
+
+For each file in the plan, call `TaskCreate` with:
+- **subject**: `{action} {filepath}` (e.g., "Add validateToken to src/auth/handler.ts")
+- **description**: The full details of what changes are needed for this file, including specific functions, patterns to follow, and line references
+- **activeForm**: Present continuous form (e.g., "Adding validateToken to handler.ts")
+
+**Then set up dependencies using `TaskUpdate`:**
+- If file B depends on file A (e.g., B imports from A), use `addBlockedBy` to mark the dependency
+- This ensures execution follows the correct order
+
+**Example:**
+```
+TaskCreate: "Create auth types in src/types/auth.ts"
+  → description: "Create AuthToken interface, ValidateResult type. Follow pattern from src/types/user.ts"
+  → activeForm: "Creating auth types"
+
+TaskCreate: "Add validateToken to src/auth/handler.ts"
+  → description: "Add validateToken function that returns ValidateResult. Handle expired token error case."
+  → activeForm: "Adding validateToken to handler"
+  → Then: TaskUpdate with addBlockedBy: [auth-types-task-id]
+```
+
+### 7. Verify Plan Completeness
 
 Checklist:
 - [ ] All files identified - nothing missing
@@ -170,8 +222,134 @@ Checklist:
 - [ ] Test coverage - all paths have test strategy
 - [ ] In scope - no scope creep
 - [ ] AC mapped - every criterion has implementation
+- [ ] **TaskList created with all file changes**
+- [ ] **Task dependencies set correctly**
 
-### 6. Present Plan for Approval
+### 8. Brainstorm Uncertainty Points
+
+<critical>
+Before proceeding, THINK about what you're NOT 100% certain about.
+DO NOT ask generic "is this plan good?" questions.
+Instead, identify SPECIFIC uncertainties and ask TARGETED questions.
+</critical>
+
+**ULTRA THINK: Identify Uncertainties**
+
+For each aspect of the plan, rate your confidence (High/Medium/Low):
+
+```markdown
+## Uncertainty Analysis
+
+| Aspect | Confidence | Uncertainty |
+|--------|------------|-------------|
+| File locations correct? | High/Medium/Low | [What's unclear] |
+| Patterns match codebase? | High/Medium/Low | [What's unclear] |
+| Dependencies complete? | High/Medium/Low | [What's unclear] |
+| Error handling approach? | High/Medium/Low | [What's unclear] |
+| User expectations for X? | High/Medium/Low | [What's unclear] |
+| Technical approach for Y? | High/Medium/Low | [What's unclear] |
+```
+
+**Identify TOP 1-4 uncertainties with Low or Medium confidence.**
+
+These are the ONLY things worth asking about.
+
+---
+
+### 9. Ask Smart Questions (if not auto_mode)
+
+**If `{auto_mode}` = true:**
+→ Skip questions, use your best judgment, proceed directly
+
+**If `{auto_mode}` = false AND you have uncertainties:**
+
+<critical>
+ONLY ask questions about things where:
+1. Multiple valid approaches exist AND the choice significantly impacts implementation
+2. User intent is genuinely ambiguous from the task description
+3. A wrong assumption could cause significant rework
+
+DO NOT ask about:
+- Implementation details you can decide yourself
+- Things you're "slightly unsure" about (just decide)
+- Generic plan approval (never ask "is this plan good?")
+</critical>
+
+**Question Types to Use:**
+
+**Type 1: Behavior Clarification**
+When user intent is genuinely unclear:
+```yaml
+questions:
+  - header: "Behavior"
+    question: "When [specific scenario], should the system [option A] or [option B]?"
+    options:
+      - label: "[Option A] (Recommended)"
+        description: "[What A does and why it might be preferred]"
+      - label: "[Option B]"
+        description: "[What B does and when it's better]"
+    multiSelect: false
+```
+
+**Type 2: Scope Clarification**
+When scope boundaries are unclear:
+```yaml
+questions:
+  - header: "Scope"
+    question: "Should we also [related thing] as part of this, or keep it focused on [core thing]?"
+    options:
+      - label: "Keep focused (Recommended)"
+        description: "Only do [core thing], faster implementation"
+      - label: "Include [related thing]"
+        description: "More complete but expands scope"
+    multiSelect: false
+```
+
+**Type 3: Technical Choice**
+When multiple valid technical approaches exist:
+```yaml
+questions:
+  - header: "Approach"
+    question: "For [specific technical decision], we can use [approach A] or [approach B]. Which fits your needs?"
+    options:
+      - label: "[Approach A] (Recommended)"
+        description: "[Tradeoffs of A - e.g., simpler but less flexible]"
+      - label: "[Approach B]"
+        description: "[Tradeoffs of B - e.g., more complex but extensible]"
+    multiSelect: false
+```
+
+**Type 4: Edge Case Handling**
+When edge case behavior is unclear:
+```yaml
+questions:
+  - header: "Edge case"
+    question: "If [edge case scenario] occurs, should we [behavior A] or [behavior B]?"
+    options:
+      - label: "[Behavior A] (Recommended)"
+        description: "[What happens with A]"
+      - label: "[Behavior B]"
+        description: "[What happens with B]"
+    multiSelect: false
+```
+
+**If you have 0 uncertainties worth asking about:**
+→ Proceed directly to execution without asking anything
+
+**Example of GOOD questions:**
+- "When a user submits invalid email format, should we show inline validation or only validate on submit?"
+- "Should the loading state show a spinner on the button or a full-page skeleton?"
+- "For rate limiting, should we limit per user or per IP address?"
+
+**Example of BAD questions (NEVER ask these):**
+- ❌ "Does this plan look good to you?"
+- ❌ "Ready to proceed with implementation?"
+- ❌ "Should I use async/await or promises?" (just decide)
+- ❌ "Is the file structure correct?" (you already verified)
+
+---
+
+### 10. Present Plan Summary
 
 ```
 **Implementation Plan Ready**
@@ -182,34 +360,19 @@ Checklist:
 **New files:** {count} files
 **Tests:** {count} test files
 
+**Key decisions made:**
+- [Decision 1 from user responses or auto-decided]
+- [Decision 2 from user responses or auto-decided]
+
 **Estimated changes:**
 - `file1.ts` - Major changes (add function, handle errors)
 - `file2.ts` - Minor changes (imports, single call)
 - `file1.test.ts` - New test file
+
+→ Proceeding to implementation...
 ```
 
-**If `{auto_mode}` = true:**
-→ Skip confirmation, proceed directly to execution
-
-**If `{auto_mode}` = false:**
-
-```yaml
-questions:
-  - header: "Plan"
-    question: "Review the implementation plan. Ready to proceed?"
-    options:
-      - label: "Approve and execute (Recommended)"
-        description: "Plan looks good, start implementation"
-      - label: "Adjust plan"
-        description: "I want to modify specific parts"
-      - label: "Ask questions"
-        description: "I have questions about the plan"
-      - label: "Start over"
-        description: "Revise the entire plan"
-    multiSelect: false
-```
-
-### 7. Complete Save Output (if save_mode)
+### 11. Complete Save Output (if save_mode)
 
 **If `{save_mode}` = true:**
 
@@ -220,6 +383,7 @@ Append to `{output_dir}/02-plan.md`:
 **Status:** ✓ Complete
 **Files planned:** {count}
 **Tests planned:** {count}
+**Uncertainties resolved:** {count}
 **Next:** step-03-execute.md
 **Timestamp:** {ISO timestamp}
 ```
@@ -232,7 +396,11 @@ Append to `{output_dir}/02-plan.md`:
 ✅ Logical dependency order established
 ✅ All acceptance criteria mapped to changes
 ✅ Test strategy defined
-✅ User approved plan (or auto-approved)
+✅ **Team created with TeamCreate BEFORE TaskList (if teams_mode)**
+✅ **TaskList created with TaskCreate for every file change**
+✅ **Task dependencies set with TaskUpdate (addBlockedBy)**
+✅ Uncertainty points identified and addressed
+✅ Smart, targeted questions asked (if not auto_mode and uncertainties exist)
 ✅ NO code written or modified
 ✅ Output saved (if save_mode)
 
@@ -243,7 +411,10 @@ Append to `{output_dir}/02-plan.md`:
 ❌ Missing test strategy
 ❌ Not mapping to acceptance criteria
 ❌ Starting to write code (that's step 3!)
-❌ **CRITICAL**: Not using AskUserQuestion for approval
+❌ **CRITICAL**: Not creating a TaskList with TaskCreate
+❌ **CRITICAL**: Asking generic "is this plan good?" questions
+❌ **CRITICAL**: Asking about implementation details you can decide yourself
+❌ **CRITICAL**: Not brainstorming uncertainties before asking questions
 
 ## PLANNING PROTOCOLS:
 
@@ -257,7 +428,16 @@ Append to `{output_dir}/02-plan.md`:
 
 ## NEXT STEP:
 
-After user approves via AskUserQuestion (or auto-proceed), load `./step-03-execute.md`
+After user approves via AskUserQuestion (or auto-proceed):
+
+**If `{tasks_mode}` = true OR `{teams_mode}` = true:**
+→ Load `./step-02b-tasks.md` to generate task breakdown with dependencies
+
+**If `{teams_mode}` = true (after task breakdown):**
+→ Flow continues to `./step-03-execute-teams.md` for Agent Team parallel execution
+
+**Otherwise:**
+→ Load `./step-03-execute.md` to start implementation
 
 <critical>
 Remember: Planning is ONLY about designing the approach - save all implementation for step-03!

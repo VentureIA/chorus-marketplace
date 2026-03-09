@@ -283,6 +283,28 @@
       "tags": ["marketing", "copywriting", "sales"]
     },
     {
+      "id": "explore",
+      "name": "Explore",
+      "description": "Fast exploration of codebase, documentation, and web. Use when understanding code structure, researching libraries, or gathering context for implementation.",
+      "version": "1.0.0",
+      "author": "Mathias",
+      "category": "productivity",
+      "types": ["skill"],
+      "source": "./skills/explore",
+      "tags": ["exploration", "codebase", "research", "context"]
+    },
+    {
+      "id": "frontend-design",
+      "name": "Frontend Design",
+      "description": "Create distinctive, production-grade frontend interfaces with high design quality. Generates creative, polished code and UI design that avoids generic AI aesthetics.",
+      "version": "1.0.0",
+      "author": "Mathias",
+      "category": "development",
+      "types": ["skill"],
+      "source": "./skills/frontend-design",
+      "tags": ["frontend", "design", "ui", "components"]
+    },
+    {
       "id": "aibuilder-create-saas",
       "name": "SaaS Builder",
       "description": "Complete SaaS ideation to implementation workflow - from idea discovery to task breakdown",

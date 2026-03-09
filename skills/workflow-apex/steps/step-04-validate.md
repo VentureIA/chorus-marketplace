@@ -27,10 +27,11 @@ next_step: steps/step-05-examine.md
 
 ## CONTEXT BOUNDARIES:
 
-- Implementation from step-03 is complete
+- Implementation from step-03 (or step-03-execute-teams) is complete
 - Tests may or may not pass yet
 - Type errors may exist
 - Focus is on verification, not new implementation
+- **If `{teams_mode}` = true:** The agent team is still alive. Do NOT shutdown or dismiss teammates. Team shutdown happens in step-09-finish only.
 
 ## YOUR TASK:
 
@@ -261,4 +262,5 @@ Based on flags (check in order):
 
 <critical>
 Remember: NEVER proceed with failing checks - fix everything first!
+If teams_mode is active: NEVER shutdown teammates — they stay alive until step-09-finish!
 </critical>
